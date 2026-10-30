@@ -52,9 +52,9 @@ else:
 subprocess.run(['git', 'config', '--local', 'credential.useHttpPath', 'true'], cwd=str(root))
 subprocess.run(['git', 'config', '--local', 'user.name', 'harulognote'], cwd=str(root))
 
-# 현재 설정된 이메일 확인
+# 현재 설정된 이메일 확인 (기본값: jhjungbiz@gmail.com)
 res_email = subprocess.run(['git', 'config', '--local', 'user.email'], cwd=str(root), capture_output=True, text=True)
-current_email = res_email.stdout.strip() if res_email.returncode == 0 and res_email.stdout.strip() else 'harulognote@gmail.com'
+current_email = res_email.stdout.strip() if res_email.returncode == 0 and res_email.stdout.strip() else 'jhjungbiz@gmail.com'
 subprocess.run(['git', 'config', '--local', 'user.email', current_email], cwd=str(root))
 
 print(f"✔ 하루로그 Git 계정: harulognote")
