@@ -15,7 +15,7 @@ if sys.platform == 'win32':
 root = Path(__file__).resolve().parent.parent
 
 print("========================================================")
-print("   HaruLog - GitHub Push and Cloudflare Deploy")
+print("   HaruLog - GitHub Push & Multi-Account Manager")
 print("========================================================")
 print(f"프로젝트 경로: {root}\n")
 
@@ -35,19 +35,31 @@ if not git_bin:
     print("Git 설치 후 다시 실행해 주세요: https://git-scm.com/")
     sys.exit(1)
 
-# 3. Git 초기화 및 origin 확인
+# 3. Git 초기화 및 격리 설정 (CenterHub와 독립)
 dot_git = root / '.git'
 if not dot_git.is_dir():
     print("✔ Git 저장소 초기화 중...")
     subprocess.run(['git', 'init'], cwd=str(root), check=True)
     subprocess.run(['git', 'remote', 'add', 'origin', 'https://harulognote@github.com/harulognote/harulog.git'], cwd=str(root))
 else:
-    # 계정 충돌 방지: harulognote 계정 명시
-    subprocess.run(['git', 'remote', 'set-url', 'origin', 'https://harulognote@github.com/harulognote/harulog.git'], cwd=str(root))
+    # 계정 충돌 방지: origin URL에 harulognote 명시
+    res_url = subprocess.run(['git', 'remote', 'get-url', 'origin'], cwd=str(root), capture_output=True, text=True)
+    curr_url = res_url.stdout.strip() if res_url.returncode == 0 else ''
+    if 'harulognote@' not in curr_url and '@' not in curr_url:
+        subprocess.run(['git', 'remote', 'set-url', 'origin', 'https://harulognote@github.com/harulognote/harulog.git'], cwd=str(root))
 
-# 로컬 사용자 설정 (센터허브와 계정 분리)
-subprocess.run(['git', 'config', 'user.name', 'harulognote'], cwd=str(root), stderr=subprocess.DEVNULL)
-subprocess.run(['git', 'config', 'user.email', 'harulognote@gmail.com'], cwd=str(root), stderr=subprocess.DEVNULL)
+# 센터허브(wookyunghub)와 자격 증명 충돌 방지: URL 경로별 자격 증명 분리
+subprocess.run(['git', 'config', '--local', 'credential.useHttpPath', 'true'], cwd=str(root))
+subprocess.run(['git', 'config', '--local', 'user.name', 'harulognote'], cwd=str(root))
+
+# 현재 설정된 이메일 확인
+res_email = subprocess.run(['git', 'config', '--local', 'user.email'], cwd=str(root), capture_output=True, text=True)
+current_email = res_email.stdout.strip() if res_email.returncode == 0 and res_email.stdout.strip() else 'harulognote@gmail.com'
+subprocess.run(['git', 'config', '--local', 'user.email', current_email], cwd=str(root))
+
+print(f"✔ 하루로그 Git 계정: harulognote")
+print(f"✔ 하루로그 인증 이메일: {current_email}")
+print(f"✔ 저장소 자격 증명 분리 (credential.useHttpPath=true): 활성화됨\n")
 
 # main 브랜치 설정
 subprocess.run(['git', 'branch', '-M', 'main'], cwd=str(root), stderr=subprocess.DEVNULL)
@@ -63,24 +75,61 @@ if res.returncode == 0:
 else:
     print("ℹ 새로운 변경 사항이 없거나 이미 최신 상태입니다.")
 
-# 5. GitHub 푸시
+# 5. GitHub 푸시 실행
 print("\n[GitHub 푸시 시작]")
-print("원격 저장소(https://github.com/harulognote/harulog)로 전송 중입니다...")
-print("(브라우저 인증 창이 열리면 로그인을 완료해 주세요)\n")
+print("원격 저장소(harulognote/harulog)로 전송 중입니다...\n")
 
 push_res = subprocess.run(['git', 'push', '-u', 'origin', 'main'], cwd=str(root))
 
-print("\n========================================================")
 if push_res.returncode == 0:
-    print(" 🎉 [SUCCESS] GitHub 업로드가 성공적으로 완료되었습니다!")
+    print("\n========================================================")
+    print(" 🎉 [SUCCESS] 하루로그(HaruLog) GitHub 푸시가 완료되었습니다!")
     print("    Cloudflare Pages에서 자동으로 빌드 및 배포가 시작됩니다.")
-else:
-    print(" ⚠ [INFO] 'main' 브랜치 푸시 재시도 중...")
-    push_retry = subprocess.run(['git', 'push', '-u', 'origin', 'HEAD'], cwd=str(root))
-    if push_retry.returncode == 0:
-        print(" 🎉 [SUCCESS] GitHub 업로드가 성공적으로 완료되었습니다!")
-    else:
-        print(" ❌ [ERROR] GitHub 푸시에 실패했습니다.")
-        print("    - GitHub 로그인 창이 뜨면 로그인/인증을 완료해 주세요.")
-        print("    - 원격 저장소 권한 및 인터넷 연결을 확인해 주세요.")
+    print("========================================================")
+    sys.exit(0)
+
+# 푸시 실패 시 (동일 PC 계정 충돌 등)
+print("\n========================================================")
+print(" ⚠ [INFO] 푸시 인증 실패 또는 다른 계정(CenterHub 등)과 충돌 발생")
+print("========================================================")
+print(" 동일 PC에 여러 GitHub 계정이 등록되어 있는 경우,")
+print(" GitHub 개인 액세스 토큰(PAT)을 사용하면 100% 확실하게 푸시할 수 있습니다.\n")
+
+print(" 1. GitHub 토큰(PAT) 입력하여 즉시 푸시 (권장 - 1초 완료)")
+print(" 2. 이메일 주소 변경 후 브라우저 로그인 재시도")
+print(" 3. Windows 자격 증명 캐시 초기화 후 재시도")
+print(" 4. 종료")
+
+choice = input("\n 원하는 작업 번호를 입력하세요 [1/2/3/4] (기본 1): ").strip()
+if choice in ('', '1'):
+    print("\n--- [GitHub Personal Access Token 안내] ---")
+    print("1) 브라우저에서 https://github.com/settings/tokens 접속 (harulognote 계정)")
+    print("2) 'Generate new token (classic)' 클릭 -> Note에 'harulog' 입력")
+    print("3) 'repo' 항목 체크 후 하단 'Generate token' 버튼 클릭")
+    print("4) 생성된 토큰(ghp_... 또는 github_pat_...)을 복사하여 아래에 붙여넣으세요.")
+    token = input("\n토큰 붙여넣기: ").strip()
+    if token:
+        token_url = f"https://{token}@github.com/harulognote/harulog.git"
+        subprocess.run(['git', 'remote', 'set-url', 'origin', token_url], cwd=str(root))
+        print("\n✔ 토큰 적용 완료. 다시 푸시를 시도합니다...")
+        push_retry = subprocess.run(['git', 'push', '-u', 'origin', 'main'], cwd=str(root))
+        if push_retry.returncode == 0:
+            print("\n 🎉 [SUCCESS] 하루로그가 성공적으로 푸시되었습니다!")
+            print("    이후부터는 LOGIN_AND_PUSH.bat만 누르면 자동으로 푸시됩니다.")
+        else:
+            print("\n ❌ 토큰 인증에 실패했습니다. 토큰 권한(repo)을 확인해 주세요.")
+
+elif choice == '2':
+    new_email = input(f"새로 사용할 인증 이메일 주소 입력 (현재: {current_email}): ").strip()
+    if new_email:
+        subprocess.run(['git', 'config', '--local', 'user.email', new_email], cwd=str(root))
+        print(f"✔ 인증 이메일을 '{new_email}'로 설정했습니다.")
+    subprocess.run(['git', 'push', '-u', 'origin', 'main'], cwd=str(root))
+
+elif choice == '3':
+    print("Windows Credential Manager의 GitHub 캐시를 삭제합니다...")
+    subprocess.run('cmdkey /delete:LegacyGeneric:target=git:https://github.com', shell=True)
+    print("✔ 캐시 삭제 완료. 다시 푸시합니다 (로그인 창이 뜨면 harulognote로 로그인하세요):")
+    subprocess.run(['git', 'push', '-u', 'origin', 'main'], cwd=str(root))
+
 print("========================================================")
