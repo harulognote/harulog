@@ -11,8 +11,44 @@ import sys
 import sqlite3
 from pathlib import Path
 
+from datetime import datetime
+
 # 프로젝트 루트 경로
 ROOT_DIR = Path(__file__).resolve().parent
+
+class SmartDateTime(str):
+    """
+    SQLite가 날짜/시간을 문자열로 반환하더라도,
+    기존 MariaDB 코드의 .strftime() 및 .isoformat() 호출과 100% 호환되도록 지원하는 스마트 문자열 객체.
+    """
+    def strftime(self, fmt):
+        val = str(self).strip()
+        try:
+            if 'T' in val:
+                dt = datetime.fromisoformat(val)
+            elif len(val) == 10:
+                dt = datetime.strptime(val, '%Y-%m-%d')
+            elif '.' in val:
+                dt = datetime.strptime(val.split('.')[0], '%Y-%m-%d %H:%M:%S')
+            else:
+                dt = datetime.strptime(val[:19], '%Y-%m-%d %H:%M:%S')
+            return dt.strftime(fmt)
+        except Exception:
+            return val
+
+    def isoformat(self):
+        val = str(self).strip()
+        return val[:10] if len(val) >= 10 and ' ' not in val[:10] else val
+
+
+def _wrap_row(row):
+    if row is None:
+        return None
+    d = dict(row)
+    for k, v in d.items():
+        if isinstance(v, str) and len(v) >= 10 and v[4] == '-' and v[7] == '-':
+            d[k] = SmartDateTime(v)
+    return d
 
 class SQLiteCursor:
     def __init__(self, cursor):
@@ -86,20 +122,20 @@ class SQLiteCursor:
             if self._mock_idx < len(self._mock_rows):
                 res = self._mock_rows[self._mock_idx]
                 self._mock_idx += 1
-                return res
+                return _wrap_row(res)
             return None
         row = self._cursor.fetchone()
         if row is None:
             return None
-        return dict(row)
+        return _wrap_row(row)
 
     def fetchall(self):
         if self._mock_rows is not None:
             res = self._mock_rows[self._mock_idx:]
             self._mock_idx = len(self._mock_rows)
-            return res
+            return [_wrap_row(r) for r in res]
         rows = self._cursor.fetchall()
-        return [dict(r) for r in rows]
+        return [_wrap_row(r) for r in rows]
 
     @property
     def lastrowid(self):
