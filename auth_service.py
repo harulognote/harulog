@@ -67,10 +67,31 @@ def ownership_ready(get_conn):
         cursor.execute("SELECT value FROM app_system WHERE name='ownership_v1'")
         if not cursor.fetchone():return False
         from ownership import TABLES
+
+        # SQLite 환경 지원 (PRAGMA table_info 검사)
+        import sqlite3
+        if hasattr(conn, '_conn') and isinstance(conn._conn, sqlite3.Connection):
+            valid_count = 0
+            for tbl in TABLES:
+                try:
+                    cursor.execute(f"PRAGMA table_info('{tbl}')")
+                    cols = [r['name'] if isinstance(r, dict) else r[1] for r in cursor.fetchall()]
+                    if 'owner_id' in cols:
+                        valid_count += 1
+                except Exception:
+                    pass
+            return valid_count == len(TABLES)
+
+        # MariaDB 환경 지원 (information_schema 검사)
         placeholders=','.join(['%s']*len(TABLES))
         cursor.execute("SELECT COUNT(DISTINCT TABLE_NAME) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND COLUMN_NAME='owner_id' AND TABLE_NAME IN ("+placeholders+")",TABLES)
         row=cursor.fetchone()
-        return bool(row and row[0]==len(TABLES))
+        if not row:
+            return False
+        val = row.get('COUNT(DISTINCT TABLE_NAME)') if isinstance(row, dict) else row[0]
+        return bool(val == len(TABLES))
+    except Exception as e:
+        return False
     finally:
         if cursor is not None:cursor.close()
         if conn is not None:conn.close()

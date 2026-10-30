@@ -16,6 +16,9 @@ env_path = current_dir / '.env'
 if env_path.is_file():
     load_dotenv(env_path, interpolate=False, encoding='utf-8-sig')
 
+# PythonAnywhere 클라우드 환경에서는 SQLite 엔진 기본 강제 보장
+os.environ.setdefault('DB_ENGINE', 'sqlite')
+
 # 3. Flask 메인 애플리케이션 임포트
 from main import app as flask_app
 from werkzeug.middleware.proxy_fix import ProxyFix

@@ -26,9 +26,28 @@ let currentEditingLogId = null;
 let cachedLogs = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadLogs();
-    loadVideos().then(videos => populateAllVocabVideoSelect(videos)).catch(error => alert(error.message));
-    loadVocab();
+    fetch('/api/auth/status', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(auth => {
+            if (!auth || !auth.authenticated) {
+                if (location.pathname !== '/login') {
+                    location.replace('/login');
+                }
+                return;
+            }
+            loadLogs();
+            loadVideos().then(videos => populateAllVocabVideoSelect(videos)).catch(error => {
+                if (error && error.message && !error.message.includes('로그인')) {
+                    alert(error.message);
+                }
+            });
+            loadVocab();
+        })
+        .catch(() => {
+            if (location.pathname !== '/login') {
+                location.replace('/login');
+            }
+        });
 });
 
 function toggleMainMenu(forceOpen) {
