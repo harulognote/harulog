@@ -19,14 +19,12 @@ print("   HaruLog - GitHub Push & Multi-Account Manager")
 print("========================================================")
 print(f"프로젝트 경로: {root}\n")
 
-# 1. Cloudflare Pages용 루트 정적 파일 최신화
+# 1. Cloudflare Pages 빌드 출력 디렉토리 확인 (static 폴더)
 static_dir = root / 'static'
-for name in ('index.html', 'login.html'):
-    src = static_dir / name
-    dst = root / name
-    if src.is_file():
-        shutil.copy2(src, dst)
-print("✔ Cloudflare Pages 루트 정적 파일 동기화 완료")
+if not (static_dir / 'index.html').is_file():
+    print("[ERROR] static/index.html 파일이 존재하지 않습니다.")
+    sys.exit(1)
+print("✔ Cloudflare Pages 정적 에셋 확인 완료 (static/ 디렉토리)")
 
 # 2. Git 설치 확인
 git_bin = shutil.which('git')
