@@ -40,7 +40,14 @@ dot_git = root / '.git'
 if not dot_git.is_dir():
     print("✔ Git 저장소 초기화 중...")
     subprocess.run(['git', 'init'], cwd=str(root), check=True)
-    subprocess.run(['git', 'remote', 'add', 'origin', 'https://github.com/harulognote/harulog.git'], cwd=str(root))
+    subprocess.run(['git', 'remote', 'add', 'origin', 'https://harulognote@github.com/harulognote/harulog.git'], cwd=str(root))
+else:
+    # 계정 충돌 방지: harulognote 계정 명시
+    subprocess.run(['git', 'remote', 'set-url', 'origin', 'https://harulognote@github.com/harulognote/harulog.git'], cwd=str(root))
+
+# 로컬 사용자 설정 (센터허브와 계정 분리)
+subprocess.run(['git', 'config', 'user.name', 'harulognote'], cwd=str(root), stderr=subprocess.DEVNULL)
+subprocess.run(['git', 'config', 'user.email', 'harulognote@gmail.com'], cwd=str(root), stderr=subprocess.DEVNULL)
 
 # main 브랜치 설정
 subprocess.run(['git', 'branch', '-M', 'main'], cwd=str(root), stderr=subprocess.DEVNULL)
