@@ -1,4 +1,4 @@
-"""HaruLog v2.9.15: run only; installation and migrations live in manage.py."""
+"""HaruLog v2.9.16: run only; installation and migrations live in manage.py."""
 import os
 from pathlib import Path
 import re
@@ -188,7 +188,7 @@ def run():
         return
     from waitress import serve
     host,port=os.getenv('APP_HOST','0.0.0.0'),int(os.getenv('APP_PORT','5000'))
-    print(f'HaruLog v2.9.15 Local URL: http://127.0.0.1:{port} (bind {host})',flush=True)
+    print(f'HaruLog v2.9.16 Local URL: http://127.0.0.1:{port} (bind {host})',flush=True)
     serve(main.app,host=host,port=port,threads=8,max_request_body_size=32*1024*1024)
 
 

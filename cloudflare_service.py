@@ -134,7 +134,7 @@ def run(app, root, port, existing=False):
         # forward a different Host to the private loopback server.
         app.config['AUTH_PUBLIC_ORIGIN'] = url
         address_file.write_text(url + '\n', encoding='utf-8')
-        print(f'\nHaruLog v2.9.15 MOBILE URL: {url}\n'
+        print(f'\nHaruLog v2.9.16 MOBILE URL: {url}\n'
               '휴대폰 브라우저에서 위 HTTPS 주소를 열고 프로그램에 로그인하세요.\n'
               '종료: Ctrl+C (현재 HaruLog 서버와 이번 실행에서 시작한 Quick Tunnel 종료)', flush=True)
         if not state.get('configured'):

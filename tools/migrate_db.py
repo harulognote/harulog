@@ -77,6 +77,18 @@ for stmt in statements:
         errors.append((stmt[:70], str(e)))
 
 conn.commit()
+
+# 3.1 텍스트 필드의 리터럴 줄바꿈(\r\n) 실제 개행 문자로 변환
+for tbl, col in [('daily_logs', 'content'), ('pet_records', 'content'), ('expense_invoices', 'memo')]:
+    try:
+        rows = cur.execute(f"SELECT id, {col} FROM `{tbl}`").fetchall()
+        for r_id, val in rows:
+            if val and (r'\r' in val or r'\n' in val):
+                fixed = val.replace(r'\r\n', '\n').replace(r'\r', '').replace(r'\n', '\n')
+                cur.execute(f"UPDATE `{tbl}` SET {col} = ? WHERE id = ?", (fixed, r_id))
+    except Exception:
+        pass
+conn.commit()
 conn.execute("PRAGMA foreign_keys=ON;")
 
 # 4. 복원 결과 전수 검증

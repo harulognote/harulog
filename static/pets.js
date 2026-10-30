@@ -1,7 +1,7 @@
 'use strict';
-// HaruLog v2.9.12 - 족보 수동 조회와 멤버 저장 보강
+// HaruLog v2.9.16 - 족보 수동 조회와 멤버 저장 보강
 let petRows=[];
-const PET_CLIENT_VERSION='2.9.12';
+const PET_CLIENT_VERSION='2.9.16';
 const petEscape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const petSexLabel=value=>({male:'수컷',female:'암컷',unknown:'미확인'}[value]||value);
 const petStatusLabel=value=>({active:'활동',deceased:'사망',transferred:'분양·이관',inactive:'비활성'}[value]||value);
@@ -13,7 +13,14 @@ async function petRequest(url,options){
     try{data=JSON.parse(text);}catch(_){throw new Error('서버 응답을 읽지 못했습니다. HaruLog를 다시 실행해 주세요.');}
     if(!response.ok)throw new Error(data.error||'펫스토리 요청을 처리하지 못했습니다.');return data;
 }
-async function ensurePetServerVersion(){const state=await petRequest('/api/auth/status',{cache:'no-store'});if(state.version!==PET_CLIENT_VERSION)throw new Error('화면은 v'+PET_CLIENT_VERSION+'이지만 실행 서버는 v'+(state.version||'확인 불가')+'입니다. 기존 서버를 완전히 종료하고 다시 실행해 주세요.');}
+async function ensurePetServerVersion(){
+    const state=await petRequest('/api/auth/status',{cache:'no-store'});
+    const parse=v=>(v||'0.0.0').split('.').map(n=>parseInt(n,10)||0);
+    const sv=parse(state.version);
+    if(sv[0]<2||(sv[0]===2&&sv[1]<9)||(sv[0]===2&&sv[1]===9&&sv[2]<12)){
+        throw new Error('화면은 v'+PET_CLIENT_VERSION+'이지만 실행 서버는 v'+(state.version||'확인 불가')+'입니다. 서버를 최신 버전으로 업데이트해 주세요.');
+    }
+}
 async function loadPets(){await ensurePetServerVersion();petRows=await petRequest('/api/pets');for(const row of petRows)if(!Number.isInteger(Number(row.generation_no)))throw new Error('실행 서버가 세대 정보를 제공하지 않습니다. HaruLog를 완전히 종료한 뒤 다시 실행해 주세요.');fillPetParentOptions();renderPets();}
 function fillPetParentOptions(){
     const current=Number(document.getElementById('petId').value||0),species=document.getElementById('petSpecies').value,generation=Number(document.getElementById('petGeneration').value||1);

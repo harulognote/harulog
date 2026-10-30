@@ -1,4 +1,4 @@
-# HaruLog v2.9.15
+# HaruLog v2.9.16
 from flask import Flask, jsonify, request, send_from_directory
 import re
 from urllib.parse import urlparse, parse_qs
@@ -740,7 +740,7 @@ def delete_vocab(vocab_id):
             cursor.close()
         conn.close()
 
-# HaruLog v2.9.15 — 영상별 받아쓰기 조회·갱신 저장
+# HaruLog v2.9.16 — 영상별 받아쓰기 조회·갱신 저장
 @app.route('/api/study/videos/<int:video_id>/dictation', methods=['GET', 'PUT'])
 def video_dictation(video_id):
     content = None

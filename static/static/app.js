@@ -162,6 +162,13 @@ async function saveLog() {
     }
 }
 
+// 오늘기록 본문 줄바꿈 및 특수문자 안전 변환
+function formatLogContent(content) {
+    if (!content) return '';
+    const clean = content.replace(/\\r\\n/g, '\n').replace(/\\r/g, '').replace(/\\n/g, '\n');
+    return escapeHtml(clean);
+}
+
 // 오늘기록 목록 조회
 async function loadLogs() {
     try {
@@ -214,7 +221,7 @@ async function loadLogs() {
                         <button type="button" class="btn-log-action btn-log-delete" onclick="deleteLog(${log.id})">🗑️ 삭제</button>
                     </div>
                 </div>
-                <div class="log-content">${escapeHtml(log.content)}</div>
+                <div class="log-content">${formatLogContent(log.content)}</div>
                 ${mediaHtml}
             `;
             container.appendChild(item);
@@ -230,7 +237,7 @@ function openEditLogModal(logId) {
     if (!log) return;
 
     currentEditingLogId = log.id;
-    document.getElementById('editLogContent').value = log.content;
+    document.getElementById('editLogContent').value = (log.content || '').replace(/\\r\\n/g, '\n').replace(/\\r/g, '').replace(/\\n/g, '\n');
 
     const existingFileBox = document.getElementById('editExistingFileBox');
     const existingFileName = document.getElementById('editExistingFileName');
