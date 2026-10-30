@@ -81,10 +81,26 @@ def parse_date(text):
             return date(int(match[3]), MONTHS[match[2].lower()], int(match[1])).isoformat()
         except ValueError:
             pass
+    m2 = re.search(r'\b(20\d{2})[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])\b', text)
+    if m2:
+        try:
+            return date(int(m2[1]), int(m2[2]), int(m2[3])).isoformat()
+        except ValueError:
+            pass
+    m3 = re.search(r'\b(0[1-9]|[12]\d|3[01])[-/.](0[1-9]|1[0-2])[-/.](20\d{2})\b', text)
+    if m3:
+        try:
+            return date(int(m3[3]), int(m3[2]), int(m3[1])).isoformat()
+        except ValueError:
+            pass
     return ''
 
 
 def parse_invoice(text):
+    if not text:
+        text = ''
+    text = text.replace(r'\r\n', '\n').replace(r'\n', '\n').replace(r'\r', '\n')
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
     result = {'billing_month': '', 'invoice_number': '', 'property_name': '', 'unit_name': '', 'due_date': '',
               'items': [], 'billed_total': '', 'readings': {'electricity': {}, 'water': {}, 'period_start': '', 'period_end': ''}}
     found = {}
@@ -213,7 +229,7 @@ def parse_invoice(text):
                 result['readings']['water']['subscription'] = found['subscription']
 
         # 총액
-        if ('total utilities' in low or 'total pemakaian listrik' in low):
+        if any(k in low for k in ['total utilities', 'total pemakaian listrik', 'total tagihan', 'total bayar', 'grand total', 'jumlah total']):
             tail = re.search(r'(' + money_pattern + r')\s*$', line)
             if tail: result['billed_total'] = localized_number(tail[1]) or ''
 
@@ -490,7 +506,7 @@ def register_routes(app, get_conn):
                 try: remove_photo(old_photo)
                 except OSError: app.logger.warning('이전 인보이스 사진 정리 실패')
             return jsonify({'status':'success','id':invoice_id}), 201 if request.method=='POST' else 200
-        except (Error,OSError):
+        except Exception:
             conn.rollback(); app.logger.exception('인보이스 저장 실패')
             return jsonify({'error':'인보이스를 저장하지 못했습니다.'}),500
         finally:
@@ -514,7 +530,7 @@ def register_routes(app, get_conn):
             try: remove_photo(row['photo_path'])
             except OSError: app.logger.warning('삭제한 인보이스 사진 정리 실패')
             return jsonify({'status':'success'})
-        except Error:
+        except Exception:
             conn.rollback();app.logger.exception('인보이스 삭제 실패')
             return jsonify({'error':'인보이스를 삭제하지 못했습니다.'}),500
         finally:

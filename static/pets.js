@@ -1,7 +1,7 @@
 'use strict';
-// HaruLog v2.9.16 - 족보 수동 조회와 멤버 저장 보강
+// HaruLog v2.9.17 - 족보 수동 조회와 멤버 저장 보강
 let petRows=[];
-const PET_CLIENT_VERSION='2.9.16';
+const PET_CLIENT_VERSION='2.9.17';
 const petEscape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const petSexLabel=value=>({male:'수컷',female:'암컷',unknown:'미확인'}[value]||value);
 const petStatusLabel=value=>({active:'활동',deceased:'사망',transferred:'분양·이관',inactive:'비활성'}[value]||value);

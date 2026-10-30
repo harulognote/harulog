@@ -187,7 +187,7 @@ def register_routes(app,get_conn):
 
     @app.get('/api/auth/status')
     def status():
-        return jsonify(configured=g.configured,authenticated=g.authenticated,version='2.9.16',
+        return jsonify(configured=g.configured,authenticated=g.authenticated,version='2.9.17',
             role=g.account['role'] if g.authenticated else '',member_id=g.account['id'] if g.authenticated else None,
             migration_required=g.authenticated and not ownership_ready(get_conn),
             username=g.account['username'] if g.authenticated else '',csrf_token=csrf_token(),

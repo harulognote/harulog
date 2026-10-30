@@ -403,13 +403,13 @@ async function onInvoicePhotoChange() {
     if (file.size > 12 * 1024 * 1024) { invoiceEl('invoicePhoto').value = ''; return alert('사진은 12MB 이하로 선택해 주세요.'); }
     invoicePhotoUrl = URL.createObjectURL(file); invoiceEl('invoicePhotoPreview').src = invoicePhotoUrl; invoiceEl('invoicePhotoPreview').hidden = false;
     invoiceEl('invoiceRemovePhoto').checked = false;
-    if ((invoiceEditingId !== null || invoiceRevision > 0) && !confirm('선택한 사진을 읽어 기존 입력값에 반영하시겠습니까? 취소하면 사진만 첨부합니다.')) return;
+    if ((invoiceEditingId !== null || invoiceRevision > 0) && !confirm('선택한 새 사진을 읽어 화면의 모든 항목을 갱신하시겠습니까?\n취소하면 사진만 첨부하고 기존 입력값을 유지합니다.')) return;
     await recognizeInvoice();
 }
 async function recognizeInvoice(useAi = false) {
     const file = invoiceEl('invoicePhoto').files[0];
     if (!file) return alert('읽을 인보이스 사진을 선택해 주세요.');
-    const generation = ++invoiceOcrGeneration; const revision = invoiceRevision;
+    const generation = ++invoiceOcrGeneration;
     const form = new FormData(); form.append('photo', file);
     invoiceEl('invoiceOcrButton').disabled = true; invoiceEl('invoiceAiButton').disabled = true;
     invoiceEl('invoiceOcrStatus').textContent = useAi ? 'OCR 확인 후 AI로 보완 중입니다…' : 'OCR로 인보이스 값을 읽고 있습니다…';
@@ -419,43 +419,43 @@ async function recognizeInvoice(useAi = false) {
         invoiceDraft = data.draft; invoiceRawText = data.text;
         invoiceEl('invoiceAiButton').hidden = useAi || !data.needs_review;
         invoiceEl('invoiceOcrText').textContent = data.text || '(인식된 문자가 없습니다.)'; invoiceEl('invoiceOcrWrap').hidden = false;
-        if (revision === invoiceRevision) applyInvoiceOcr(false);
-        else { invoiceEl('invoiceApplyOcr').hidden = false; invoiceEl('invoiceOcrStatus').textContent = '인식 중 입력내용이 변경되어 자동 반영하지 않았습니다. 인식값 적용 버튼으로 반영할 수 있습니다.'; }
+        // 다시 읽기 실행 시 새 사진의 모든 항목을 화면에 즉시 전체 반영
+        applyInvoiceOcr(false);
     } catch (error) { if (generation === invoiceOcrGeneration) { invoiceEl('invoiceOcrStatus').textContent = error.message + ' 수동 입력으로 저장할 수 있습니다.'; if (!useAi) invoiceEl('invoiceAiButton').hidden = false; } }
     finally { if (generation === invoiceOcrGeneration) { invoiceEl('invoiceOcrButton').disabled = false; invoiceEl('invoiceAiButton').disabled = false; } }
 }
 function applyInvoiceOcr(confirmReplace) {
     if (!invoiceDraft || (confirmReplace && !confirm('현재 입력값에 인식값을 반영하시겠습니까?'))) return;
     const draft = invoiceDraft;
-    for (const [id,key] of [['invoiceMonth','billing_month'],['invoiceNumber','invoice_number'],['invoiceProperty','property_name'],['invoiceUnit','unit_name'],['invoiceDue','due_date'],['invoiceBilled','billed_total']]) {
-        if (draft[key] !== '') {
-            if (id === 'invoiceBilled') {
-                invoiceEl(id).value = Math.ceil(parseFloat(draft[key]) || 0);
-            } else {
-                invoiceEl(id).value = draft[key];
-            }
-        }
-    }
     
-    // 기본 6개 항목(수도 사용요금 포함) 무조건 구성
+    // 1. 기본 인보이스 정보 갱신 (다시 읽기 시 인식된 모든 항목 갱신)
+    invoiceEl('invoiceMonth').value = draft.billing_month || invoiceEl('invoiceMonth').value;
+    invoiceEl('invoiceNumber').value = draft.invoice_number || '';
+    invoiceEl('invoiceProperty').value = draft.property_name || '';
+    invoiceEl('invoiceUnit').value = draft.unit_name || '';
+    invoiceEl('invoiceDue').value = draft.due_date || '';
+    invoiceEl('invoiceBilled').value = draft.billed_total ? Math.ceil(parseFloat(draft.billed_total) || 0) : '';
+
+    // 2. 기본 6개 항목(수도 사용요금 포함) 무조건 새 인식값으로 재구성
     const itemsToRender = prepareInvoiceItems(draft.items);
     invoiceEl('invoiceItems').replaceChildren();
     itemsToRender.forEach(addInvoiceItem);
 
+    // 3. 전기 및 수도 검침값 전체 교체
     for (const section of ['electricity','water']) {
+        const meter = (draft.readings && draft.readings[section]) || {};
         for (const key of ['previous','current','usage','rate']) {
-            if ((draft.readings[section] || {})[key] !== undefined) {
-                invoiceEl(invoiceMeterId(section,key)).value = draft.readings[section][key];
-            }
+            invoiceEl(invoiceMeterId(section,key)).value = (meter[key] !== undefined && meter[key] !== null) ? meter[key] : '';
         }
     }
-    if (invoiceEl('invoiceMeter_electricity_tax_rate') && (draft.readings.electricity || {}).tax_rate) {
-        invoiceEl('invoiceMeter_electricity_tax_rate').value = draft.readings.electricity.tax_rate;
+    if (invoiceEl('invoiceMeter_electricity_tax_rate')) {
+        invoiceEl('invoiceMeter_electricity_tax_rate').value = (draft.readings && draft.readings.electricity && draft.readings.electricity.tax_rate) ? draft.readings.electricity.tax_rate : '2.4';
     }
-    if (invoiceEl('invoiceMeter_water_subscription') && (draft.readings.water || {}).subscription) {
-        invoiceEl('invoiceMeter_water_subscription').value = Math.ceil(parseFloat(draft.readings.water.subscription) || 30400);
+    if (invoiceEl('invoiceMeter_water_subscription')) {
+        invoiceEl('invoiceMeter_water_subscription').value = Math.ceil(parseFloat((draft.readings && draft.readings.water && draft.readings.water.subscription) || 30400));
     }
-    for (const [id,key] of [['invoicePeriodStart','period_start'],['invoicePeriodEnd','period_end']]) if (draft.readings[key]) invoiceEl(id).value = draft.readings[key];
+    invoiceEl('invoicePeriodStart').value = (draft.readings && draft.readings.period_start) || '';
+    invoiceEl('invoicePeriodEnd').value = (draft.readings && draft.readings.period_end) || '';
 
     isUserTaxManual = false;
     autoCalcTax(true);

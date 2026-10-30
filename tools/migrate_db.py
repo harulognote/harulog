@@ -79,7 +79,7 @@ for stmt in statements:
 conn.commit()
 
 # 3.1 텍스트 필드의 리터럴 줄바꿈(\r\n) 실제 개행 문자로 변환
-for tbl, col in [('daily_logs', 'content'), ('pet_records', 'content'), ('expense_invoices', 'memo')]:
+for tbl, col in [('daily_logs', 'content'), ('pet_records', 'content'), ('expense_invoices', 'memo'), ('expense_invoices', 'ocr_text')]:
     try:
         rows = cur.execute(f"SELECT id, {col} FROM `{tbl}`").fetchall()
         for r_id, val in rows:

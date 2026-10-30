@@ -110,7 +110,10 @@ class SQLiteCursor:
         if re.match(r'^INSERT\s+IGNORE\b', clean_sql, re.I):
             clean_sql = re.sub(r'^INSERT\s+IGNORE\b', 'INSERT OR IGNORE', clean_sql, flags=re.I)
 
-        # 4. 파라미터 플레이스홀더 %s -> ? 변환
+        # 4. FOR UPDATE 구문 제거 (SQLite 미지원 및 테이블 락으로 대체)
+        clean_sql = re.sub(r'\s+FOR\s+UPDATE\b', '', clean_sql, flags=re.I)
+
+        # 5. 파라미터 플레이스홀더 %s -> ? 변환
         if '%s' in clean_sql:
             clean_sql = clean_sql.replace('%s', '?')
 
@@ -161,6 +164,10 @@ class SQLiteConnection:
 
     def cursor(self, *args, **kwargs):
         return SQLiteCursor(self._conn.cursor())
+
+    def start_transaction(self, *args, **kwargs):
+        # SQLite는 DML 실행 시 자동으로 트랜잭션을 시작하므로 no-op 처리
+        pass
 
     def commit(self):
         return self._conn.commit()
