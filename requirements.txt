@@ -1,0 +1,7 @@
+Flask==3.0.3
+mysql-connector-python==9.0.0
+python-dotenv==1.0.1
+Pillow>=10.4,<13
+waitress>=3.0.2,<4
+tinysegmenter==0.3
+jieba==0.42.1
