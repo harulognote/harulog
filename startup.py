@@ -62,19 +62,32 @@ def ensure_config():
 
 
 def connect_database():
-    import mysql.connector
-    return mysql.connector.connect(host=os.getenv('DB_HOST','127.0.0.1'),
-        port=int(os.getenv('DB_PORT','3306')),user=os.getenv('DB_USER','root'),
-        password=os.getenv('DB_PASSWORD',''),database=os.getenv('DB_NAME','harulog_db'),connection_timeout=10)
+    import db_adapter
+    conn = db_adapter.get_connection()
+    if conn is None:
+        raise RuntimeError('데이터베이스에 연결할 수 없습니다. .env 설정 또는 harulog.db 상태를 확인해 주세요.')
+    return conn
 
 
 def schema_columns(conn):
     cursor = conn.cursor()
     try:
+        import sqlite3
+        if hasattr(conn, '_conn') and isinstance(conn._conn, sqlite3.Connection):
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [r['name'] if isinstance(r, dict) else r[0] for r in cursor.fetchall() if not (r['name'] if isinstance(r, dict) else r[0]).startswith('sqlite_')]
+            available = {}
+            for t in tables:
+                cursor.execute(f"PRAGMA table_info('{t}')")
+                available[t] = {r['name'] if isinstance(r, dict) else r[1] for r in cursor.fetchall()}
+            return available
+
         cursor.execute('SELECT TABLE_NAME,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s',
                        (os.getenv('DB_NAME','harulog_db'),))
         available = {}
-        for table, column in cursor.fetchall():
+        for row in cursor.fetchall():
+            table = row['TABLE_NAME'] if isinstance(row, dict) else row[0]
+            column = row['COLUMN_NAME'] if isinstance(row, dict) else row[1]
             available.setdefault(table, set()).add(column)
         return available
     finally:

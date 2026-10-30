@@ -58,20 +58,10 @@ def delete_uploaded_file(file_path):
         except OSError:
             app.logger.warning('첨부파일 정리 실패: %s', filename)
 
+import db_adapter
+
 def get_raw_db_connection():
-    try:
-        conn = mysql.connector.connect(
-            host=os.getenv('DB_HOST', '127.0.0.1'),
-            user=os.getenv('DB_USER', 'root'),
-            password=os.getenv('DB_PASSWORD', ''),
-            database=os.getenv('DB_NAME', 'harulog_db'),
-            connection_timeout=10,
-            port=int(os.getenv('DB_PORT', 3306))
-        )
-        return conn
-    except Error as e:
-        print(f"MariaDB 연결 실패: {e}")
-        return None
+    return db_adapter.get_connection()
 
 def get_db_connection():
     conn=get_raw_db_connection()

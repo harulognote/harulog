@@ -31,9 +31,12 @@ wheels/
 # CenterHub workspace
 CenterHub_extracted/
 
-# Runtime / Logs
+# Runtime / Logs / Database
 runtime/
 *.log
+*.db
+*.sqlite
+*.sqlite3
 
 # Sensitive environment credentials (서버에서 별도 설정 권장)
 # .env는 서버 배포 시 직접 작성하므로 푸시에서 제외하거나 예시로 공유

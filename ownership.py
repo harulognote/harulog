@@ -9,8 +9,8 @@ def scoped_sql(sql,user_id):
     owner=int(user_id)
     if owner<1:raise ValueError('로그인 소유자가 없습니다.')
     text=sql.strip().rstrip(';')
-    if re.match(r'^INSERT\s+(?:IGNORE\s+)?INTO\s+',text,re.I):
-        pattern=r'^(INSERT\s+(?:IGNORE\s+)?INTO\s+('+TABLE_PATTERN+r')\s*\()([^)]*)(\)\s*VALUES\s*\()'
+    if re.match(r'^INSERT\s+(?:(?:OR\s+)?IGNORE\s+)?INTO\s+',text,re.I):
+        pattern=r'^(INSERT\s+(?:(?:OR\s+)?IGNORE\s+)?INTO\s+('+TABLE_PATTERN+r')\s*\()([^)]*)(\)\s*VALUES\s*\()'
         match=re.search(pattern,text,re.I|re.S)
         if not match:raise ValueError('지원하지 않는 개인자료 INSERT입니다.')
         if re.search(r'\bowner_id\b',match[3],re.I):raise ValueError('소유자는 서버에서만 지정합니다.')
