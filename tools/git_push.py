@@ -19,12 +19,25 @@ print("   HaruLog - GitHub Push & Multi-Account Manager")
 print("========================================================")
 print(f"프로젝트 경로: {root}\n")
 
-# 1. Cloudflare Pages 빌드 출력 디렉토리 확인 (static 폴더)
+# 1. Cloudflare Pages 빌드 출력 디렉토리 확인 및 정적 자산 이중화
 static_dir = root / 'static'
 if not (static_dir / 'index.html').is_file():
     print("[ERROR] static/index.html 파일이 존재하지 않습니다.")
     sys.exit(1)
-print("✔ Cloudflare Pages 정적 에셋 확인 완료 (static/ 디렉토리)")
+
+# /static/* 경로와 /* 경로 모두 지원하도록 static/static 복제 유지
+sub_static = static_dir / 'static'
+sub_static.mkdir(exist_ok=True)
+for f in static_dir.glob('*.*'):
+    if f.name != '_redirects':
+        shutil.copy2(f, sub_static / f.name)
+
+# Cloudflare Pages _redirects 파일 보장
+redirects_file = static_dir / '_redirects'
+if not redirects_file.is_file():
+    redirects_file.write_text("/static/* /:splat 200\n", encoding='utf-8')
+
+print("✔ Cloudflare Pages 정적 에셋 및 스타일시트 경로 동기화 완료")
 
 # 2. Git 설치 확인
 git_bin = shutil.which('git')

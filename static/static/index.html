@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>HaruLog</title>
+    <meta name="harulog-csrf" content="__HARULOG_CSRF__">
+    <link rel="stylesheet" href="static/style.css?v=2.9.13">
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- HaruLog v1.9.0: 확장 가능한 전체메뉴 -->
+        <header class="app-header">
+            <div class="header-bar">
+                <div class="brand-lockup"><h1>Harulog<span>.</span></h1><span id="adminBadge" class="admin-badge" hidden>ADMIN</span></div>
+                <button type="button" class="btn-log-action" onclick="logoutHaruLog()">로그아웃</button>
+                <button type="button" id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="mainMenu" onclick="toggleMainMenu()">☰ 전체메뉴</button>
+            </div>
+            <nav id="mainMenu" class="tab-menu" aria-label="메인메뉴" hidden>
+                <button type="button" class="tab-btn active" data-tab="log-tab" aria-current="page" onclick="switchTab('log-tab', this)"><span aria-hidden="true">📝</span>오늘기록</button>
+                <button type="button" class="tab-btn" data-tab="study-tab" onclick="switchTab('study-tab', this)"><span aria-hidden="true">📚</span>Haru스터디</button>
+                <button type="button" class="tab-btn" data-tab="score-tab" onclick="switchTab('score-tab', this)"><span aria-hidden="true">⛳</span>스코어관리</button>
+                <button type="button" class="tab-btn" data-tab="expense-tab" onclick="switchTab('expense-tab', this)"><span aria-hidden="true">🧾</span>공과금관리</button>
+                <button type="button" class="tab-btn" data-tab="pets-tab" onclick="switchTab('pets-tab', this)"><span aria-hidden="true">🐾</span>펫스토리</button>
+                <button type="button" class="tab-btn" data-tab="settings-tab" onclick="switchTab('settings-tab', this)"><span aria-hidden="true">⚙️</span>개인설정</button>
+                <button type="button" id="adminMenu" class="tab-btn admin-only" data-tab="admin-tab" onclick="switchTab('admin-tab', this)" hidden><span aria-hidden="true">🔐</span>관리자</button>
+            </nav>
+        </header>
+        <main id="mainContent">
+            <p id="migrationNotice" class="input-card" role="status" hidden></p>
+            <div class="page-heading"><h2 id="currentPageTitle" tabindex="-1">오늘기록</h2><span class="app-version">v2.9.13</span></div>
+            <!-- 1. 오늘기록 탭 -->
+            <section id="log-tab" class="tab-content active">
+                <div class="input-card log-create-card">
+                    <h3>📝 오늘 Haru 기록하기</h3>
+                    <textarea id="logInput" placeholder="지금 이 순간, 어떤 Haru를 지나치고 있나요?"></textarea>
+                    
+                    <!-- 파일 첨부 영역 -->
+                    <div class="file-attach-bar">
+                        <label for="logFileInput" class="btn-file-select">
+                            <span>📎 사진 / 파일 첨부</span>
+                        </label>
+                        <input type="file" id="logFileInput" accept="image/*,.pdf,.txt,.zip" style="display:none;" onchange="handleLogFileSelect(event)">
+                        
+                        <!-- 선택된 파일 미리보기 박스 -->
+                        <div id="filePreviewWrap" class="file-preview-wrap" style="display:none;">
+                            <div class="file-preview-info">
+                                <img id="filePreviewImage" class="preview-thumb" style="display:none;" alt="미리보기">
+                                <span id="filePreviewIcon" class="preview-icon">📄</span>
+                                <span id="filePreviewName" class="preview-filename"></span>
+                            </div>
+                            <button type="button" class="btn-file-clear" onclick="clearSelectedLogFile()" title="첨부 취소">✕</button>
+                        </div>
+                    </div>
+
+                    <button class="btn-submit" onclick="saveLog()">오늘 기록하기</button>
+                </div>
+                
+                <!-- 타임라인 기록 목록 -->
+                <div class="timeline-header">
+                    <h3>📋 기록 목록 <span id="logCountBadge" class="count-badge">0</span></h3>
+                </div>
+                <div class="timeline" id="timelineContainer"></div>
+            </section>
+
+            <!-- 2. Haru스터디 탭 -->
+            <section id="study-tab" class="tab-content">
+                <!-- Haru스터디 상단 서브 탭 바 -->
+                <div class="sub-tab-bar home-form-row">
+                    <button type="button" id="subtabStudyVideoBtn" class="sub-tab-btn active" onclick="switchStudySubTab('video')">🎬 영상 학습</button>
+                    <button type="button" id="subtabStudyVocabBtn" class="sub-tab-btn" onclick="switchStudySubTab('vocab')">📖 전체 단어장 (A-Z)</button>
+                </div>
+
+                <!-- 2-1. 영상 학습 영역 -->
+                <div id="studyVideoView">
+                    <!-- 언어별 스터디 선택 필터 바 -->
+                    <div class="study-lang-filter-bar" id="studyLangFilterBar">
+                        <button type="button" class="lang-filter-btn active" data-lang="ALL" onclick="filterStudyVideos('ALL', this)">ALL (전체)</button>
+                        <button type="button" class="lang-filter-btn" data-lang="ID" onclick="filterStudyVideos('ID', this)">🇮🇩 ID</button>
+                        <button type="button" class="lang-filter-btn" data-lang="US" onclick="filterStudyVideos('US', this)">🇺🇸 US</button>
+                        <button type="button" class="lang-filter-btn" data-lang="JP" onclick="filterStudyVideos('JP', this)">🇯🇵 JP</button>
+                        <button type="button" class="lang-filter-btn" data-lang="CN" onclick="filterStudyVideos('CN', this)">🇨🇳 CN</button>
+                        <button type="button" class="lang-filter-btn" data-lang="ETC" onclick="filterStudyVideos('ETC', this)">🌐 ETC</button>
+                    </div>
+
+                    <div class="input-card">
+                        <h3>🎬 새 학습 영상 등록</h3>
+                        <input type="text" id="videoTitle" placeholder="영상 제목 (예: 인도네시아어 회화)">
+                        <div class="home-form-row-top">
+                            <input type="text" id="videoUrl" placeholder="유튜브 링크 주소 복사/붙여넣기" class="home-field-wide">
+                            <select id="videoLanguage" style="flex:1; font-weight:600;">
+                                <option value="ID" selected>ID (인도네시아)</option>
+                                <option value="US">US (영어)</option>
+                                <option value="JP">JP (일본어)</option>
+                                <option value="CN">CN (중국어)</option>
+                                <option value="ETC">ETC (기타)</option>
+                            </select>
+                        </div>
+                        <textarea id="videoScript" placeholder="받아쓰기 정답으로 쓰일 자막/스크립트 전체 입력 (단어: 뜻 형태로 작성 시 자동 추출 가능)" style="height:60px; margin-top:8px;"></textarea>
+                        <button class="btn-submit" onclick="saveVideo()">학습 영상 등록</button>
+                    </div>
+                    <div class="video-section">
+                        <div class="video-section-header">
+                            <h3>📺 학습할 영상 선택 <span id="videoCountBadge" class="count-badge">0</span></h3>
+                            <button type="button" id="btnToggleVideoList" class="btn-toggle-list" onclick="toggleVideoListExpand()" style="display:none;">전체보기 ▾</button>
+                        </div>
+                        <div class="video-grid-list" id="videoBadgeContainer"></div>
+                        <div class="player-wrapper" id="playerWrapper">
+                            <div style="color:var(--text-muted); text-align:center; padding:40px 0;">위 목록에서 영상을 선택하면 플레이어가 활성화됩니다.</div>
+                        </div>
+                        <div class="selected-video-bar" id="selectedVideoBar" style="display:none;">
+                            <span id="selectedVideoTitle" class="selected-video-title"></span>
+                            <div class="home-compact-actions">
+                                <button type="button" class="btn-edit-video" onclick="openScriptVocabModal()" style="border-color:#38bdf8; color:#38bdf8;">📖 단어장 생성</button>
+                                <button type="button" class="btn-edit-video" onclick="openEditVideoModal()">✏️ 수정</button>
+                                <button type="button" id="deleteVideoButton" class="btn-edit-video btn-delete-video" onclick="deleteSelectedVideo()">삭제</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="study-workspace" id="studyWorkspace" style="display:none;">
+                        <div class="input-card">
+                            <h3>✍️ 실시간 받아쓰기 (Dictation)</h3>
+                            <textarea id="dictationInput" placeholder="영상을 들으며 받아쓰기를 작성해보세요."></textarea>
+                            <button type="button" id="saveDictationButton" class="btn-submit" onclick="saveDictation()" disabled>받아쓰기 저장</button>
+                            <button class="btn-submit" onclick="checkDictation()" style="background-color: var(--point-color); color:#000;">정답 매칭 확인</button>
+                            <div id="dictationResult" class="result-box"></div>
+                        </div>
+                        <div class="input-card">
+                            <div class="toggle-header" onclick="toggleScript()">
+                                <h3>📖 정답 스크립트 확인</h3>
+                                <span id="toggleIcon">▼</span>
+                            </div>
+                            <div id="scriptContent" class="script-box" style="display:none;"></div>
+                        </div>
+                        <div class="input-card">
+                            <div class="score-toolbar">
+                                <h3 id="videoVocabTitle">🔑 영상 관계 단어장</h3>
+                                <button type="button" class="btn-edit-video" onclick="openScriptVocabModal()">📖 스크립트로 단어장 생성</button>
+                            </div>
+                            <p class="score-help" id="videoVocabNotice">현재 선택된 영상에 등록된 단어들만 표시됩니다.</p>
+                            <div class="home-form-row-top">
+                                <input type="text" id="vocabWord" placeholder="단어" class="home-flex-fill">
+                                <input type="text" id="vocabMeaning" placeholder="한국어 뜻" class="home-flex-fill">
+                            </div>
+                            <button class="btn-submit" onclick="saveVocab()">단어장 저장</button>
+                            <div class="vocab-list home-margin-top" id="vocabContainer"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2-2. 신규 전체 단어장 별도 조회 화면 (알파벳순) -->
+                <div id="studyVocabView" style="display:none;">
+                    <div class="input-card home-margin-bottom">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <h3 style="margin:0;">📖 전체 단어장 (A-Z 알파벳순)</h3>
+                            <span id="allVocabCountBadge" class="count-badge" style="font-size:0.85rem;">0단어</span>
+                        </div>
+                        <p class="score-help" style="margin-bottom:10px;">등록된 모든 어휘를 알파벳순으로 정렬하여 조회하고 검색할 수 있습니다.</p>
+                        
+                        <!-- 단어 검색창 -->
+                        <div style="position:relative; margin-bottom:10px;">
+                            <input type="text" id="allVocabSearchInput" placeholder="🔍 단어, 한국어 뜻, 출처 영상 제목 검색..." oninput="onSearchAllVocabInput()" style="width:100%; padding-left:12px;">
+                        </div>
+
+                        <!-- 단어 직접 추가 폼 (전체 화면용) -->
+                        <details style="margin-top:6px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
+                            <summary style="cursor:pointer; font-size:0.85rem; color:#60a5fa; font-weight:600;">+ 새 단어 직접 추가하기</summary>
+                            <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                                <div class="home-compact-actions">
+                                    <input type="text" id="allVocabWordInput" placeholder="단어 (예: selamat pagi)" class="home-flex-fill">
+                                    <input type="text" id="allVocabMeaningInput" placeholder="한국어 뜻 (예: 좋은 아침)" class="home-flex-fill">
+                                </div>
+                                <div class="home-compact-actions">
+                                    <select id="allVocabVideoSelect" style="flex:2; font-size:0.85rem;">
+                                        <option value="">(연결 영상 없음 / 일반 단어)</option>
+                                    </select>
+                                    <button type="button" class="btn-submit" onclick="saveAllVocabDirect()" style="flex:1; margin-top:0;">추가</button>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- 알파벳순 전체 단어 목록 -->
+                    <div class="input-card">
+                        <div class="score-toolbar home-heading-close">
+                            <span style="font-size:0.85rem; color:var(--text-muted);">알파벳순 어휘 목록</span>
+                            <button type="button" class="btn-log-action" onclick="loadAllVocabList()">🔄 새로고침</button>
+                        </div>
+                        <div class="vocab-list" id="allVocabListContainer"></div>
+                    </div>
+                </div>
+            </section>
+            <section id="score-tab" class="tab-content" aria-label="스코어관리">
+                <div class="score-summary" id="scoreSummary"></div>
+                <div id="scoreTrend" class="input-card"></div>
+                <div class="score-toolbar"><h3>나의 라운드</h3><button type="button" class="btn-edit-video" onclick="newScoreRound()">+ 라운드 등록</button></div>
+                <form id="scoreForm" class="input-card score-form" hidden>
+                    <h3 id="scoreFormTitle">라운드 등록</h3>
+                    <div class="score-fields">
+                        <label>라운드 날짜<input id="scoreDate" type="date" required></label>
+                        <label>본인 성명<input id="scorePlayer" type="text" maxlength="100" placeholder="본인"></label>
+                    </div>
+                    <label>본인 별명<input id="scoreNickname" type="text" maxlength="100" placeholder="개인설정에서 불러옵니다"></label>
+                    <label>골프장명<input id="scoreClub" type="text" maxlength="150" placeholder="예: Riverside Golf Club" required></label>
+                    <label>코스명 (선택)<input id="scoreCourse" type="text" maxlength="150" placeholder="예: A코스 / B코스"></label>
+                    <div class="score-fields score-points">
+                        <label>전반 9홀<input id="scoreFront" type="number" min="1" max="891" step="1" placeholder="자동 계산" readonly></label>
+                        <label>후반 9홀<input id="scoreBack" type="number" min="1" max="891" step="1" placeholder="자동 계산" readonly></label>
+                        <div class="score-total"><span>총점</span><strong id="scoreTotal">—</strong></div>
+                    </div>
+                    <p class="score-help">1~18홀의 실제 타수를 입력하면 전반·후반·총점이 자동 계산됩니다.</p>
+                    <p id="scoreLegacyNotice" class="score-help"></p>
+                    <div id="scoreHoleInputs"></div>
+                    <details class="score-photo-details" open><summary>스코어카드 사진 (선택)</summary>
+                        <input id="scorePhoto" type="file" accept="image/jpeg,image/png,image/webp" onchange="onScorePhotoChange()">
+                        <img id="scorePhotoPreview" class="score-photo-preview" alt="스코어카드 사진" hidden>
+                        <label id="scoreRemovePhotoLabel" class="score-remove" hidden><input id="scoreRemovePhoto" type="checkbox"> 저장된 사진 삭제</label>
+                        <p class="score-help">사진을 보관하고 홀별 실제 타수를 직접 입력해 주세요. 사진을 선택하면 아래에 미리보기가 표시됩니다.</p>
+                    </details>
+                    <div class="score-toolbar"><h3>동반자 (선택)</h3><button type="button" class="btn-edit-video" onclick="addScoreCompanion()">+ 추가</button></div>
+                    <div class="score-toolbar"><select id="scoreContactSelect" aria-label="저장된 동반자 선택"><option value="">저장된 동반자 선택</option></select><button type="button" class="btn-edit-video" onclick="addSavedScoreCompanion()">선택 추가</button></div>
+                    <div id="scoreCompanions"></div>
+                    <label>메모<textarea id="scoreMemo" maxlength="5000" placeholder="라운드 메모 (선택)"></textarea></label>
+                    <div class="modal-actions"><button id="scoreSaveButton" type="submit" class="btn-submit">저장</button><button type="button" class="btn-cancel" onclick="cancelScoreEdit()">취소</button></div>
+                    <p id="scoreFormStatus" class="score-help" role="status" aria-live="polite"></p>
+                </form>
+                <div id="scoreListStatus" class="score-help" role="status"></div>
+                <div id="scoreRoundList" class="score-round-list"></div>
+            </section>
+            <section id="expense-tab" class="tab-content" aria-label="공과금관리">
+                <!-- 상단 서브 탭 바 -->
+                <div class="sub-tab-bar home-form-row">
+                    <button type="button" id="subtabInvoiceBtn" class="sub-tab-btn active" onclick="switchExpenseSubTab('invoice')">📋 내역서관리</button>
+                    <button type="button" id="subtabUtilityBtn" class="sub-tab-btn" onclick="switchExpenseSubTab('utility')">✏️ 직접입력 (공과금/사용량)</button>
+                </div>
+
+                <!-- 1. 기존 내역서(인보이스) 관리 영역 -->
+                <div id="expenseInvoiceView">
+                    <div class="score-summary" id="invoiceSummary"></div>
+
+                    <!-- 내역서 청구총액 & 전기·수도 사용량 추이 그래프 카드 -->
+                    <div id="invoiceChartsCard" class="input-card home-margin-bottom">
+                        <h3 class="home-heading-gap">📊 내역서 청구총액 &amp; 사용량 추이</h3>
+                        <div class="home-margin-bottom">
+                            <div class="home-caption-row">
+                                <span style="font-size:0.85rem; color:#60a5fa; font-weight:700;">💰 월별 청구총액 추이 (Rp)</span>
+                            </div>
+                            <div id="invoiceFeeChart"></div>
+                        </div>
+                        <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:10px;">
+                            <div class="home-caption-row">
+                                <span class="home-usage-label">📈 월별 전기(kWh) &amp; 수도(m³) 사용량 추이</span>
+                            </div>
+                            <div id="invoiceUsageChart"></div>
+                        </div>
+                    </div>
+
+                    <div class="score-toolbar"><h3>관리비 인보이스 내역서</h3><button type="button" class="btn-edit-video" onclick="newInvoice()">+ 인보이스 등록</button></div>
+                    <form id="invoiceForm" class="input-card invoice-form" hidden>
+                        <h3 id="invoiceFormTitle">인보이스 등록</h3>
+                        <label class="input-label" for="invoicePhoto">인보이스 사진 (선택하면 자동 인식)</label>
+                        <input id="invoicePhoto" type="file" accept="image/jpeg,image/png,image/webp" onchange="onInvoicePhotoChange()">
+                        <img id="invoicePhotoPreview" class="score-photo-preview" alt="관리비 인보이스 미리보기" hidden>
+                        <label id="invoiceRemovePhotoLabel" class="score-remove" hidden><input type="checkbox" id="invoiceRemovePhoto"> 저장된 사진 삭제</label>
+                        <button id="invoiceOcrButton" type="button" class="btn-cancel" onclick="recognizeInvoice()">사진 다시 읽기</button>
+                        <p id="invoiceOcrStatus" class="score-help" role="status" aria-live="polite"></p>
+                        <button id="invoiceAiButton" type="button" class="btn-cancel" onclick="recognizeInvoice(true)" hidden>OCR 누락·불일치 항목 AI로 보완</button>
+                        <button id="invoiceApplyOcr" type="button" class="btn-cancel" onclick="applyInvoiceOcr(true)" hidden>인식값 적용 (입력내용 교체)</button>
+                        <details id="invoiceOcrWrap" hidden><summary>인식 원문 확인</summary><pre id="invoiceOcrText"></pre></details>
+                        <p class="score-help">사진 없이 직접 입력할 수 있습니다. 금액은 Rp 기준이며, 인식값은 저장 전에 반드시 확인해 주세요.</p>
+                        <div class="score-fields"><label>청구월<input id="invoiceMonth" type="month" required></label><label>인보이스 번호<input id="invoiceNumber" type="text" maxlength="100"></label></div>
+                        <label>건물 / 아파트<input id="invoiceProperty" type="text" maxlength="150" placeholder="건물명"></label>
+                        <div class="score-fields"><label>동 / 호수<input id="invoiceUnit" type="text" maxlength="80"></label><label>납기일<input id="invoiceDue" type="date"></label></div>
+                        <details class="invoice-meter-details"><summary>사용기간 · 전기/수도 검침 정보</summary>
+                            <div class="score-fields"><label>사용 시작일<input id="invoicePeriodStart" type="date"></label><label>사용 종료일<input id="invoicePeriodEnd" type="date"></label></div>
+                            <div id="invoiceMeterFields"></div>
+                        </details>
+                        <div class="score-toolbar"><h3>청구 항목 (Rp)</h3><button type="button" class="btn-edit-video" onclick="addInvoiceItem()">+ 항목</button></div>
+                        <div id="invoiceItems"></div>
+
+                        <!-- 전기세 소계, 수도세 소계, 항목 총합계 표시 영역 -->
+                        <div class="invoice-subtotals-card" style="background:rgba(255,255,255,0.03); border:1.5px solid var(--border-color); border-radius:6px; padding:10px 14px; margin-top:8px; margin-bottom:10px;">
+                            <div class="home-summary-row">
+                                <span class="home-usage-label">⚡ 전기 소계 (사용요금+공용설비+세금+행정비)</span>
+                                <strong id="invoiceElecSubtotal" style="color:#fbbf24; font-size:0.95rem;">Rp 0</strong>
+                            </div>
+                            <div class="home-summary-row">
+                                <span style="font-size:0.85rem; color:#06b6d4; font-weight:700;">💧 수도 소계 (사용요금+기본료)</span>
+                                <strong id="invoiceWaterSubtotal" style="color:#67e8f9; font-size:0.95rem;">Rp 0</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(255,255,255,0.15); padding-top:6px;">
+                                <span style="font-size:0.9rem; color:#fff; font-weight:700;">📋 항목 합계 (청구 항목 총합)</span>
+                                <strong id="invoiceItemsTotal" style="color:#a78bfa; font-size:1.05rem;">Rp 0</strong>
+                            </div>
+                        </div>
+
+                        <label>인보이스 청구총액 (Rp)<input id="invoiceBilled" type="number" min="0" max="9999999999999" step="1" required oninput="updateInvoiceTotal()"></label>
+                        <button type="button" class="btn-log-action" onclick="copyInvoiceSum()">항목 합계를 청구총액에 적용</button>
+                        <p id="invoiceDifference" class="score-help" role="status"></p>
+                        <div class="score-fields"><label>납부 상태<select id="invoicePaid" onchange="updateInvoicePaid()"><option value="0">미납</option><option value="1">납부 완료</option></select></label><label>납부일<input id="invoicePaidDate" type="date" disabled></label></div>
+                        <label>메모<textarea id="invoiceMemo" maxlength="5000"></textarea></label>
+                        <div class="modal-actions"><button id="invoiceSaveButton" type="submit" class="btn-submit">저장</button><button type="button" class="btn-cancel" onclick="cancelInvoiceEdit()">취소</button></div>
+                        <p id="invoiceFormStatus" class="score-help" role="status" aria-live="polite"></p>
+                    </form>
+                    <div class="invoice-filters"><label>청구월<input id="invoiceFilterMonth" type="month" onchange="renderInvoices()"></label><label>납부 상태<select id="invoiceFilterPaid" onchange="renderInvoices()"><option value="">전체</option><option value="0">미납</option><option value="1">납부 완료</option></select></label><button type="button" class="btn-log-action" onclick="resetInvoiceFilters()">초기화</button></div>
+                    <p id="invoiceListStatus" class="score-help" role="status"></p>
+                    <div id="invoiceList" class="score-round-list"></div>
+                </div>
+
+                <!-- 2. 신규 공과금 직접입력 영역 -->
+                <div id="expenseUtilityView" style="display:none;">
+                    <!-- 최근 연도 합산 및 각 항목 소계 요약 카드 -->
+                    <div class="utility-year-summary" id="utilitySummary"></div>
+
+                    <!-- 월별 공과금 금액 추이 그래프 -->
+                    <div class="input-card home-margin-bottom">
+                        <h3 class="home-heading-close">📊 월별 공과금 금액 추이</h3>
+                        <div id="utilityFeeChart"></div>
+                    </div>
+
+                    <div class="score-toolbar">
+                        <h3>월별 공과금 기록</h3>
+                        <button type="button" class="btn-edit-video" onclick="newUtilityRecord()">+ 공과금 직접입력</button>
+                    </div>
+
+                    <!-- 직접입력 폼 (사용량 입력 제거 및 2열 컴팩트 배치) -->
+                    <form id="utilityForm" class="input-card invoice-form" hidden>
+                        <h3 id="utilityFormTitle">월별 공과금 직접입력</h3>
+                        <p class="score-help">내역서 없이 전기세, 수도세, 가스비, 통신비 등을 월별로 직접 입력하고 그래프로 관리합니다.</p>
+
+                        <div class="score-fields">
+                            <label>청구월 (YYYY-MM)
+                                <input id="utilityMonth" type="month" required>
+                            </label>
+                            <label>⚡ 전기세
+                                <input id="utilityElecFee" type="number" min="0" step="1" placeholder="전기요금" oninput="updateUtilityTotalCalc()">
+                            </label>
+                        </div>
+
+                        <div class="score-fields">
+                            <label>💧 수도세
+                                <input id="utilityWaterFee" type="number" min="0" step="1" placeholder="수도요금" oninput="updateUtilityTotalCalc()">
+                            </label>
+                            <label>🔥 가스비
+                                <input id="utilityGasFee" type="number" min="0" step="1" placeholder="가스요금" oninput="updateUtilityTotalCalc()">
+                            </label>
+                        </div>
+
+                        <div class="score-fields">
+                            <label>📱 통신비 (인터넷/모바일)
+                                <input id="utilityTelecomFee" type="number" min="0" step="1" placeholder="통신요금" oninput="updateUtilityTotalCalc()">
+                            </label>
+                            <label>🏢 기타 관리비
+                                <input id="utilityOtherFee" type="number" min="0" step="1" placeholder="기타 요금" oninput="updateUtilityTotalCalc()">
+                            </label>
+                        </div>
+
+                        <div class="invoice-sum" style="margin:8px 0 4px 0;">
+                            <span>청구총액</span>
+                            <input id="utilityTotalFee" type="number" min="0" step="1" placeholder="소계 자동 합산" style="font-size:16px; font-weight:bold; color:#38bdf8; max-width:180px; text-align:right;">
+                        </div>
+                        <p id="utilityAutoSumNotice" class="score-help" style="color:#93c5fd; margin-bottom:6px;"></p>
+
+                        <label>메모<textarea id="utilityMemo" maxlength="5000" placeholder="납부일자, 계좌, 특이사항 등" style="height:50px;"></textarea></label>
+                        <div class="modal-actions">
+                            <button id="utilitySaveBtn" type="submit" class="btn-submit">공과금 저장</button>
+                            <button type="button" class="btn-cancel" onclick="cancelUtilityEdit()">취소</button>
+                        </div>
+                        <p id="utilityFormStatus" class="score-help" role="status" aria-live="polite"></p>
+                    </form>
+
+                    <p id="utilityListStatus" class="score-help" role="status"></p>
+                    <div id="utilityRecordList" class="score-round-list"></div>
+                </div>
+            </section>
+            <section id="pets-tab" class="tab-content" aria-label="펫스토리">
+                <div class="pet-subtabs">
+                    <button type="button" id="petPedigreeTabButton" class="sub-tab-btn active" onclick="switchPetView('pedigree')">족보 트리</button>
+                    <button type="button" id="petListTabButton" class="sub-tab-btn" onclick="switchPetView('list')">펫 등록·관리</button>
+                </div>
+                <div id="petListView" style="display:none">
+                    <form id="petForm" class="input-card pet-form" onsubmit="savePet(event)">
+                        <h3 id="petFormTitle">🐾 반려동물 등록</h3>
+                        <input id="petId" type="hidden">
+                        <div class="pet-fields">
+                            <label>이름 *<input id="petName" type="text" maxlength="100" required></label>
+                            <label>동물 종류 *<select id="petSpecies" onchange="fillPetParentOptions()"><option value="cat">고양이</option><option value="dog">개</option><option value="bird">새</option><option value="rabbit">토끼</option><option value="fish">물고기</option><option value="reptile">파충류</option><option value="other">기타</option></select></label>
+                            <label>성별 *<select id="petSex"><option value="unknown">미확인</option><option value="male">수컷</option><option value="female">암컷</option></select></label>
+                            <label>상태<select id="petStatus"><option value="active">활동</option><option value="deceased">사망</option><option value="transferred">분양·이관</option><option value="inactive">비활성</option></select></label>
+                            <label>생년월일<input id="petBirthDate" type="date"></label>
+                            <label>세대 *<input id="petGeneration" type="number" min="1" max="50" value="1" required onchange="fillPetParentOptions()"></label>
+                            <label>부(수컷)<select id="petSireId"><option value="">미등록</option></select></label>
+                            <label>모(암컷)<select id="petDamId"><option value="">미등록</option></select></label>
+                            <label>사진<input id="petPhoto" type="file" accept="image/jpeg,image/png,image/webp"></label>
+                        </div>
+                        <p class="score-help">세대를 직접 입력하세요. 부·모는 같은 종류의 바로 앞 세대에서 선택합니다. 1세대에는 부모를 연결하지 않습니다.</p>
+                        <div id="petFormStatus" class="settings-status" role="status"></div>
+                        <div class="pet-actions"><button type="submit" class="btn-submit">저장</button><button type="button" class="btn-cancel" onclick="resetPetForm()">새로 입력</button></div>
+                    </form>
+                    <div class="input-card">
+                        <div class="score-toolbar"><h3>반려동물 목록 <span id="petCountBadge" class="count-badge">0</span></h3><input id="petSearch" type="search" placeholder="이름·종류 검색" oninput="renderPets()"></div>
+                        <div id="petList" class="pet-card-grid"></div>
+                    </div>
+                </div>
+                <div id="petPedigreeView">
+                    <div class="input-card">
+                        <div class="pet-pedigree-toolbar">
+                            <label>동물 종류<select id="petPedigreeSpecies" onchange="clearPetPedigreeResult()"><option value="">전체</option><option value="cat">고양이</option><option value="dog">개</option><option value="bird">새</option><option value="rabbit">토끼</option><option value="fish">물고기</option><option value="reptile">파충류</option><option value="other">기타</option></select></label>
+                            <button type="button" class="btn-submit" onclick="loadPetPedigree()">족보 조회</button>
+                        </div>
+                    </div>
+                    <div id="petPedigreeTree" class="pet-pedigree-tree"><div class="video-empty-notice">동물 종류를 확인한 후 족보 조회 버튼을 눌러 주세요.</div></div>
+                </div>
+                <div id="petDetailModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closePetDetail()">
+                    <section class="modal-card pet-detail-card" role="dialog" aria-modal="true" aria-labelledby="petDetailTitle">
+                        <div class="modal-header"><h3 id="petDetailTitle">펫 상세</h3><button type="button" class="btn-close-modal" onclick="closePetDetail()">✕</button></div>
+                        <div id="petDetailSummary" class="pet-detail-summary"></div>
+                        <form id="petRecordForm" class="pet-record-form" onsubmit="savePetRecord(event)">
+                            <input id="petRecordPetId" type="hidden">
+                            <label>기록일<input id="petRecordDate" type="date" required></label>
+                            <label>기록<textarea id="petRecordContent" maxlength="3000" rows="3" required placeholder="성장, 건강, 교배, 일상 기록"></textarea></label>
+                            <label>관련 사진<input id="petRecordPhoto" class="pet-file-input" type="file" accept="image/jpeg,image/png,image/webp"></label>
+                            <button class="btn-submit" type="submit">기록 추가</button><p id="petRecordStatus" class="settings-status" role="status"></p>
+                        </form>
+                        <div id="petRecordList" class="pet-record-list"></div>
+                    </section>
+                </div>
+            </section>
+            <section id="settings-tab" class="tab-content" aria-label="개인설정">
+                <form id="accountForm" class="input-card settings-form">
+                    <h3>로그인 계정 관리</h3><p class="score-help">아이디와 비밀번호 변경 시 현재 비밀번호를 확인합니다.</p>
+                    <label>로그인 아이디<input id="accountUsername" autocomplete="username" minlength="3" maxlength="64" required></label>
+                    <label>현재 비밀번호<input id="accountCurrentPassword" type="password" autocomplete="current-password" maxlength="256" required></label>
+                    <div class="score-fields"><label>새 비밀번호<input id="accountNewPassword" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label><label>새 비밀번호 확인<input id="accountConfirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="256" required></label></div>
+                    <button id="accountSave" class="btn-submit" type="submit">로그인 정보 변경</button><button class="btn-cancel" type="button" onclick="logoutHaruLog()">로그아웃</button>
+                    <p id="accountStatus" role="status" class="settings-status"></p>
+                </form>
+                <form id="profileForm" class="input-card settings-form">
+                    <h3>본인 기본정보</h3>
+                    <div class="score-fields">
+                        <label>성명<input id="profileName" type="text" maxlength="100" placeholder="본인 성명" required></label>
+                        <label>별명<input id="profileNickname" type="text" maxlength="100" placeholder="별명"></label>
+                    </div>
+                    <button id="profileSave" class="btn-submit" type="submit" style="margin-top:6px;">본인정보 저장</button>
+                    <p id="profileStatus" class="score-help" role="status"></p>
+                </form>
+                <div class="score-toolbar"><h3>동반자 주소록</h3><button type="button" class="btn-edit-video" onclick="editContact()">+ 동반자 등록</button></div>
+                <form id="contactForm" class="input-card settings-form" hidden>
+                    <h3 id="contactFormTitle">동반자 등록</h3>
+                    <div class="score-fields">
+                        <label>성명<input id="contactName" type="text" maxlength="100" required></label>
+                        <label>별명<input id="contactNickname" type="text" maxlength="100"></label>
+                    </div>
+                    <div class="score-fields">
+                        <label>연락처<input id="contactPhone" type="tel" maxlength="80"></label>
+                        <label>주소<input id="contactAddress" type="text" maxlength="500"></label>
+                    </div>
+                    <label>메모<textarea id="contactMemo" maxlength="2000" style="height:55px;"></textarea></label>
+                    <div class="modal-actions"><button id="contactSave" class="btn-submit" type="submit">저장</button><button type="button" class="btn-cancel" onclick="closeContactForm()">취소</button></div>
+                    <p id="contactStatus" class="score-help" role="status"></p>
+                </form>
+                <p id="settingsStatus" class="score-help" role="status"></p>
+                <div id="contactList"></div>
+            </section>
+            <section id="admin-tab" class="tab-content" aria-label="관리자">
+                <div class="input-card"><h3>멤버 관리</h3><p class="score-help">회원 승인·권한·이용 상태를 관리합니다. 다른 사람의 개인자료는 열람하지 않습니다.</p><label>아이디·이름 검색<input id="memberSearch" maxlength="100"></label><button class="btn-edit-video" type="button" onclick="loadMembers(1)">검색·새로고침</button><p id="memberCount"></p></div>
+                <form id="memberForm" class="input-card settings-form" hidden novalidate><h3 id="memberEditTitle">멤버 수정</h3>
+                <label>아이디<input id="memberUsername" minlength="3" maxlength="64" required autocomplete="off"></label><label>이름<input id="memberName" maxlength="100" required></label>
+                <div class="score-fields"><label>권한<select id="memberRole"><option value="user">일반 사용자</option><option value="admin">관리자</option></select></label><label>상태<select id="memberStatus"><option value="pending">승인 대기</option><option value="active">사용 중</option><option value="suspended">이용 정지</option><option value="deleted">삭제 처리</option></select></label></div>
+                <label>새 비밀번호 (재설정할 때만)<input id="memberNewPassword" type="password" minlength="8" maxlength="256" autocomplete="new-password"></label>
+                <label>관리자 본인의 현재 비밀번호 <span class="required-mark">* 저장 필수</span><input id="memberAdminPassword" type="password" maxlength="256" autocomplete="current-password" required></label>
+                <div class="modal-actions"><button id="memberSave" class="btn-submit" type="submit">저장</button><button id="memberDelete" class="btn-cancel" type="button">멤버 삭제</button><button class="btn-cancel" type="button" onclick="document.getElementById('memberForm').hidden=true">닫기</button></div><p id="memberFormStatus" role="status"></p></form>
+                <p id="adminStatus" role="status"></p><div id="memberList"></div><div class="modal-actions"><button id="memberPrev" type="button" class="btn-cancel" onclick="loadMembers(adminPage-1)">이전</button><button id="memberNext" type="button" class="btn-cancel" onclick="loadMembers(adminPage+1)">다음</button></div>
+                <div class="input-card"><h3>관리 작업 기록</h3><button type="button" class="btn-edit-video" onclick="loadAdminAudit()">최근 100건 조회</button><div id="adminAudit" class="admin-audit"></div></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 오늘기록 수정 모달 -->
+    <div id="editLogModal" class="modal-overlay" style="display:none;" onclick="handleLogModalOverlayClick(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>📝 기록 수정</h3>
+                <button type="button" class="btn-close-modal" onclick="closeEditLogModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="input-label" for="editLogContent">기록 내용</label>
+                <textarea id="editLogContent" placeholder="기록 내용을 입력하세요." style="height:100px;"></textarea>
+                
+                <!-- 기존 파일 정보 -->
+                <div id="editExistingFileBox" class="existing-file-box" style="display:none;">
+                    <span class="file-label">기존 첨부파일:</span>
+                    <div class="existing-file-content">
+                        <span id="editExistingFileName" class="existing-filename"></span>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="editRemoveFileCheckbox"> 파일 삭제
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 파일 교체/새로 첨부 -->
+                <label class="input-label home-margin-top">파일 교체 / 새로 첨부</label>
+                <input type="file" id="editLogFileInput" accept="image/*,.pdf,.txt,.zip">
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-submit home-flex-fill" onclick="saveEditedLog()">수정 완료</button>
+                    <button type="button" class="btn-cancel home-flex-fill" onclick="closeEditLogModal()">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 영상 수정 모달 -->
+    <div id="editVideoModal" class="modal-overlay" style="display:none;" onclick="handleModalOverlayClick(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>🎬 학습 영상 정보 수정</h3>
+                <button type="button" class="btn-close-modal" onclick="closeEditVideoModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="input-label" for="editVideoTitle">영상 제목</label>
+                <input type="text" id="editVideoTitle" placeholder="영상 제목 (예: TED 영어 회화)">
+                <div class="home-form-row-top">
+                    <div class="home-field-wide">
+                        <label class="input-label" for="editVideoUrl">유튜브 주소</label>
+                        <input type="text" id="editVideoUrl" placeholder="유튜브 링크 주소 복사/붙여넣기">
+                    </div>
+                    <div class="home-flex-fill">
+                        <label class="input-label" for="editVideoLanguage">언어 구분</label>
+                        <select id="editVideoLanguage" style="width:100%; height:42px; margin-top:6px; font-weight:600;">
+                            <option value="ID">ID (인도네시아)</option>
+                            <option value="US">US (영어)</option>
+                            <option value="JP">JP (일본어)</option>
+                            <option value="CN">CN (중국어)</option>
+                            <option value="ETC">ETC (기타)</option>
+                        </select>
+                    </div>
+                </div>
+                <label class="input-label" for="editVideoScript" style="margin-top:8px;">정답 스크립트</label>
+                <textarea id="editVideoScript" placeholder="받아쓰기 정답으로 쓰일 자막/스크립트 전체 입력" style="height:120px;"></textarea>
+                <div class="modal-actions">
+                    <button type="button" class="btn-submit home-flex-fill" onclick="saveEditedVideo()">수정 완료</button>
+                    <button type="button" class="btn-cancel home-flex-fill" onclick="closeEditVideoModal()">취소</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 스크립트 단어장 생성 모달 -->
+    <div id="scriptVocabModal" class="modal-overlay" style="display:none;" onclick="handleScriptVocabModalClick(event)">
+        <div class="modal-card" style="max-height:85vh; display:flex; flex-direction:column;">
+            <div class="modal-header">
+                <h3>📖 영상 스크립트 단어장 생성</h3>
+                <button type="button" class="btn-close-modal" onclick="closeScriptVocabModal()">✕</button>
+            </div>
+            <div class="modal-body" style="overflow-y:auto; flex:1;">
+                <p id="scriptVocabDesc" class="score-help home-heading-gap">스크립트에서 추출된 단어 목록입니다. 한국어 뜻을 확인/수정 후 일괄 등록할 수 있습니다.</p>
+                <div id="scriptVocabList" style="display:flex; flex-direction:column; gap:8px;"></div>
+                <div style="margin-top:12px; display:flex; gap:8px;">
+                    <button type="button" class="btn-edit-video" onclick="addScriptVocabRow()">+ 단어 직접 추가</button>
+                </div>
+                <div class="modal-actions" style="margin-top:16px;">
+                    <button type="button" class="btn-submit home-flex-fill" onclick="saveScriptVocabBatch()">선택 단어 일괄 저장</button>
+                    <button type="button" class="btn-cancel home-flex-fill" onclick="closeScriptVocabModal()">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이미지 확대 라이트박스 모달 -->
+    <div id="imageLightboxModal" class="lightbox-overlay" style="display:none;" onclick="closeImageLightbox()">
+        <img id="lightboxImage" class="lightbox-image" src="" alt="확대 이미지">
+    </div>
+
+    <script src="static/session.js?v=2.9.13"></script>
+    <script src="static/common.js?v=2.9.13"></script>
+    <script src="static/app.js?v=2.9.13"></script>
+    <script src="static/score.js?v=2.9.13"></script>
+    <script src="static/invoice.js?v=2.9.13"></script>
+    <script src="static/settings.js?v=2.9.13"></script>
+    <script src="static/utility.js?v=2.9.13"></script>
+    <script src="static/pets.js?v=2.9.13"></script>
+    <script src="static/admin.js?v=2.9.13"></script>
+</body>
+</html>
