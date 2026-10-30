@@ -31,8 +31,9 @@ wheels/
 # CenterHub workspace
 CenterHub_extracted/
 
-# Runtime / Logs / Database
+# Runtime / Logs / Database / Uploads
 runtime/
+uploads/
 *.log
 *.db
 *.sqlite
