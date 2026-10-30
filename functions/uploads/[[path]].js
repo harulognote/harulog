@@ -2,7 +2,7 @@ export async function onRequest(context) {
   const url = new URL(context.request.url);
   const backendBase = (context.env && context.env.BACKEND_URL) 
     ? context.env.BACKEND_URL.replace(/\/+$/, '') 
-    : 'https://harulog.pythonanywhere.com';
+    : 'https://harulognote.pythonanywhere.com';
 
   const targetUrl = new URL(url.pathname + url.search, backendBase);
   const headers = new Headers(context.request.headers);

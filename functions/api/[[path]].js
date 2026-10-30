@@ -1,9 +1,9 @@
 export async function onRequest(context) {
   const url = new URL(context.request.url);
-  // 환경변수 BACKEND_URL이 설정되어 있으면 사용하고, 없으면 기본 PythonAnywhere URL 사용
+  // 환경변수 BACKEND_URL이 설정되어 있으면 사용하고, 없으면 기본 harulognote URL 사용
   const backendBase = (context.env && context.env.BACKEND_URL) 
     ? context.env.BACKEND_URL.replace(/\/+$/, '') 
-    : 'https://harulog.pythonanywhere.com';
+    : 'https://harulognote.pythonanywhere.com';
 
   const targetUrl = new URL(url.pathname + url.search, backendBase);
   const targetHost = targetUrl.host;
@@ -35,6 +35,22 @@ export async function onRequest(context) {
       body: context.request.body,
       redirect: 'follow'
     });
+
+    // 백엔드가 비정상 상태에서 HTML 오류 페이지를 반환할 경우 JSON으로 안전 변환
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok && contentType.includes('text/html')) {
+      return new Response(JSON.stringify({
+        error: `백엔드 응답 오류 (${response.status})`,
+        authenticated: false
+      }), {
+        status: response.status,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': url.origin,
+          'Access-Control-Allow-Credentials': 'true',
+        }
+      });
+    }
 
     // Cloudflare Pages 도메인과의 원활한 통신을 위한 응답 헤더 보정
     const newHeaders = new Headers(response.headers);
